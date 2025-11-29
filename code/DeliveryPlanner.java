@@ -16,7 +16,9 @@ public class DeliveryPlanner {
         int n = Integer.parseInt(parts[1]);
         int P = Integer.parseInt(parts[2]); 
         int S = Integer.parseInt(parts[3]); 
-
+        search.m = m;
+        search.n = n;
+        search.parseTraffic(trafficStr); 
         List<DeliverySearch.Coord> products = new ArrayList<>();
         if(parts.length > 4 && !parts[4].isEmpty()) {
             String[] coords = parts[4].split(",");
@@ -37,12 +39,13 @@ public class DeliveryPlanner {
                 search.tunnels.add(new DeliverySearch.Tunnel(a,b));
             }
         }
-
+/* 
         search.stores.clear();
         for(int i=0; i<S; i++){
             search.stores.add(new DeliverySearch.Coord(0,i)); // example: trucks at top row
         }
-
+*/
+//i commented the above because i already generate stores in the gengrid
         search.customers.clear();
         search.customers.addAll(products);
 
@@ -67,27 +70,31 @@ public class DeliveryPlanner {
 
         result.append("=== DELIVERY PLAN ===\n");
         for(DeliverySearch.Coord product : products){
-            double bestCost = Double.MAX_VALUE;
-            String bestPlan = "";
-            DeliverySearch.Coord bestTruck = null;
-            int bestNodes = 0;
+    double bestCost = Double.MAX_VALUE;
+    String bestPlan = "";
+    DeliverySearch.Coord bestTruck = null;
+    int bestTruckIndex = -1;  // ADD THIS
+    int bestNodes = 0;
 
-            for(DeliverySearch.Coord truck : search.stores){
-                String pathResult = search.path(truck, product, strategy);
-                String[] pathParts = pathResult.split(";");
-                double cost = Double.parseDouble(pathParts[1]);
-                int nodesExpanded = Integer.parseInt(pathParts[2]);
+    int truckIndex = 0;  // ADD THIS
+    for(DeliverySearch.Coord truck : search.stores){
+        String pathResult = search.path(truck, product, strategy);
+        String[] pathParts = pathResult.split(";");
+        double cost = Double.parseDouble(pathParts[1]);
+        int nodesExpanded = Integer.parseInt(pathParts[2]);
 
-                if(cost < bestCost){
-                    bestCost = cost;
-                    bestPlan = pathParts[0];
-                    bestTruck = truck;
-                    bestNodes = nodesExpanded;
-                }
-            }
+        if(cost < bestCost){
+            bestCost = cost;
+            bestPlan = pathParts[0];
+            bestTruck = truck;
+            bestTruckIndex = truckIndex;  // ADD THIS
+            bestNodes = nodesExpanded;
+        }
+        truckIndex++;  // ADD THIS
+    }
 
-            result.append("Truck ").append(search.stores.indexOf(bestTruck))
-                  .append(" -> Customer ").append(products.indexOf(product)).append("\n");
+    result.append("Truck ").append(bestTruckIndex)  // CHANGE THIS LINE
+          .append(" -> Customer ").append(products.indexOf(product)).append("\n");
             result.append("  Plan : ").append(bestPlan).append("\n");
             result.append("  Total Cost : ").append(bestCost).append("\n");
             result.append("  Nodes Expanded : ").append(bestNodes).append("\n\n");

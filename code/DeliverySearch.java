@@ -80,6 +80,12 @@ public class DeliverySearch extends GenericSearch {
             sb.setLength(sb.length() - 1);
         sb.append(";");
 
+            for (Coord store : stores) {
+        sb.append(store.x).append(",").append(store.y).append(",");
+    }
+        if (!stores.isEmpty())
+            sb.setLength(sb.length() - 1);
+
         return sb.toString();
     }
 @Override
@@ -519,7 +525,7 @@ public void parseInitialState(String initialState) {
     }
 }
 
-private void parseTraffic(String trafficStr) {
+public void parseTraffic(String trafficStr) {
     traffic.clear();
     if (trafficStr == null || trafficStr.isEmpty()) return;
     

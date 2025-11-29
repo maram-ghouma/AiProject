@@ -47,12 +47,29 @@ public abstract class GenericSearch {
         return frontier;
     }*/
 protected Queue<Node> qingFun(String strategy, Queue<Node> frontier, List<Node> newNodes) {
-    // Simple BF implementation for testing
-    if (strategy.equals("BF")) {
-        for (Node node : newNodes) {
-            frontier.add(node);
-        }
+    switch (strategy) {
+        case "BF": // Breadth-First Search
+            // Add to end of queue (FIFO)
+            for (Node node : newNodes) {
+                frontier.add(node);
+            }
+            break;
+            
+        case "DF": // Depth-First Search
+            // Add to front of queue (LIFO) - use stack behavior
+            Queue<Node> newFrontier = new LinkedList<>();
+            for (Node node : newNodes) {
+                newFrontier.add(node);
+            }
+            for (Node node : frontier) {
+                newFrontier.add(node);
+            }
+            return newFrontier;
+            
+        default:
+            throw new IllegalArgumentException("Unknown strategy: " + strategy);
     }
+    
     return frontier;
 }
 }
