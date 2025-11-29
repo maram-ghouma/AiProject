@@ -12,7 +12,7 @@ public class DeliverySearch extends GenericSearch {
     public Map<Edge, Integer> traffic = new HashMap<>();
     public List<Coord> stores = new ArrayList<>();
 
-    public static class State {
+/*    public static class State {
         public Coord pos;
         public Set<Coord> delivered; //les clients deja servis
 
@@ -32,7 +32,7 @@ public class DeliverySearch extends GenericSearch {
         public int hashCode(){
             return Objects.hash(pos, delivered);
         }
-    }
+    }*/
 
     public static class Coord {
         public int x, y;
@@ -82,23 +82,116 @@ public class DeliverySearch extends GenericSearch {
 
         return sb.toString();
     }
-    @Override
-    public boolean isGoal(Object stateObj){
-        // TODO 
-        return false;
-    }
+@Override
+public boolean isGoal(Object stateObj) {
+    String state = (String) stateObj;
+    String[] parts = state.split(";");
+    if (parts.length < 2) return false;
+    
+    String deliveredStr = parts[1];
+    if (deliveredStr.isEmpty()) return customers.isEmpty();
+    
+    String[] coords = deliveredStr.split(",");
+    return (coords.length / 2) == customers.size();
+}
+
 
     @Override
-    public List<Node> expand(Node node){
-        // TODO
-        return null;
+    public List<Node> expand(Node node) {
+        List<Node> children = new ArrayList<>();
+
+        // Parse the current state
+        String[] parts = node.state.toString().split(";");
+        String[] posParts = parts[0].split(",");
+        int x = Integer.parseInt(posParts[0]);
+        int y = Integer.parseInt(posParts[1]);
+
+        Set<Coord> delivered = new HashSet<>();
+        if (parts.length > 1 && !parts[1].isEmpty()) {
+            String[] deliveredParts = parts[1].split(",");
+            for (int i = 0; i < deliveredParts.length; i += 2) {
+                delivered.add(new Coord(Integer.parseInt(deliveredParts[i]), Integer.parseInt(deliveredParts[i + 1])));
+            }
+        }
+
+        // Possible moves: up, down, left, right
+        int[][] moves = { {0,-1}, {0,1}, {-1,0}, {1,0} };
+        String[] moveNames = { "up", "down", "left", "right" };
+
+        for (int i = 0; i < moves.length; i++) {
+            int nx = x + moves[i][0];
+            int ny = y + moves[i][1];
+
+            // Check bounds
+            if (nx >= 0 && nx < n && ny >= 0 && ny < m) {
+                Coord nextCoord = new Coord(nx, ny);
+                Set<Coord> newDelivered = new HashSet<>(delivered);
+                if (customers.contains(nextCoord)) newDelivered.add(nextCoord);
+
+                // Build new state string
+                StringBuilder sb = new StringBuilder();
+                sb.append(nx).append(",").append(ny).append(";");
+                for (Coord c : newDelivered) sb.append(c.x).append(",").append(c.y).append(",");
+                if (!newDelivered.isEmpty()) sb.setLength(sb.length() - 1);
+                sb.append(";");
+
+                // Create new Node
+                Node child = new Node(sb.toString(), node, moveNames[i],
+                        node.pathCost + getStepCost(node.state, moveNames[i], sb.toString()));
+                children.add(child);
+            }
+        }
+
+        // Handle tunnels
+        for (Tunnel t : tunnels) {
+            Coord entrance = null, exit = null;
+            if (t.a.equals(new Coord(x, y))) { entrance = t.a; exit = t.b; }
+            else if (t.b.equals(new Coord(x, y))) { entrance = t.b; exit = t.a; }
+            if (entrance != null) {
+                Set<Coord> newDelivered = new HashSet<>(delivered);
+                if (customers.contains(exit)) newDelivered.add(exit);
+
+                // Build new state string
+                StringBuilder sb = new StringBuilder();
+                sb.append(exit.x).append(",").append(exit.y).append(";");
+                for (Coord c : newDelivered) sb.append(c.x).append(",").append(c.y).append(",");
+                if (!newDelivered.isEmpty()) sb.setLength(sb.length() - 1);
+                sb.append(";");
+
+                Node child = new Node(sb.toString(), node, "tunnel",
+                        node.pathCost + getStepCost(node.state, "tunnel", sb.toString()));
+                children.add(child);
+            }
+        }
+
+        return children;
     }
 
-    @Override
-    public double getStepCost(Object state, String action, Object nextState){
-        // TODO
-        return 0;
+
+@Override
+public double getStepCost(Object stateObj, String action, Object nextStateObj) {
+    // Parse current position
+    String state = (String) stateObj;
+    String nextState = (String) nextStateObj;
+
+    int x1 = Integer.parseInt(state.split(";")[0].split(",")[0]);
+    int y1 = Integer.parseInt(state.split(";")[0].split(",")[1]);
+
+    int x2 = Integer.parseInt(nextState.split(";")[0].split(",")[0]);
+    int y2 = Integer.parseInt(nextState.split(";")[0].split(",")[1]);
+
+    Coord src = new Coord(x1, y1);
+    Coord dst = new Coord(x2, y2);
+
+    if (action.equals("tunnel")) {
+        // Manhattan distance for tunnels
+        return Math.abs(x1 - x2) + Math.abs(y1 - y2);
+    } else {
+        // Normal move: look up traffic
+        Edge e = new Edge(src, dst);
+        return (double) traffic.getOrDefault(e, Integer.MAX_VALUE); // blocked road = inf
     }
+}
 
 
     public String GenGrid() {
@@ -110,10 +203,19 @@ public class DeliverySearch extends GenericSearch {
 
         customers.clear();
         tunnels.clear();
+        stores.clear(); // ADD THIS
 
         while (customers.size() < p) {
             Coord c = new Coord(rand.nextInt(n), rand.nextInt(m));
             customers.add(c);
+        }
+
+        // ADD THIS - Generate stores
+        while (stores.size() < s) {
+            Coord store = new Coord(rand.nextInt(n), rand.nextInt(m));
+            if (!customers.contains(store) && !stores.contains(store)) {
+                stores.add(store);
+            }
         }
 
         int numTunnels = Math.max(1, p / 2);
@@ -143,18 +245,368 @@ public class DeliverySearch extends GenericSearch {
         }
         return this.getInitialState();
 }
-
-
-    public String path(Coord start, Coord destination, String strategy){
-        // TODO
+ 
+public String path(Coord start, Coord destination, String strategy) {
+    // Save current state
+    Set<Coord> originalCustomers = new HashSet<>(customers);
+    List<Coord> originalStores = new ArrayList<>(stores);
+    
+    // Set up single-point path problem
+    customers.clear();
+    customers.add(destination);
+    stores.clear();
+    stores.add(start);
+    
+    // Reset expanded nodes counter
+    Node.expandedCount = 0;
+    
+    // Create initial state with start position (NOT using getInitialState())
+    String customInitialState = start.x + "," + start.y + ";;";
+    
+    // Manually run search with custom initial state
+    Queue<Node> frontier = makeQueue(makeNode(customInitialState));
+    Set<Object> explored = new HashSet<>();
+    Node result = null;
+    
+    while (!frontier.isEmpty()) {
+        Node node = removeFront(frontier);
+        if (isGoal(node.state)) {
+            result = node;
+            break;
+        }
+        if (explored.contains(node.state)) continue; 
+        explored.add(node.state);
+        Node.expandedCount++;
+        List<Node> children = expand(node);
+        List<Node> filteredChildren = new ArrayList<>();
+        for (Node child : children) {
+            if (!explored.contains(child.state)) {
+                filteredChildren.add(child);
+            }
+        }
+        frontier = qingFun(strategy, frontier, filteredChildren);
+    }
+    
+    // Restore original state
+    customers = originalCustomers;
+    stores = originalStores;
+    
+    // Handle failure case
+    if (result == null) {
         return "NONE;0;0";
     }
+    
+    // Build the action path
+    List<String> actions = new ArrayList<>();
+    Node current = result;
+    while (current.parent != null) {
+        actions.add(0, current.action);
+        current = current.parent;
+    }
+    
+    String pathStr = actions.isEmpty() ? "NONE" : String.join(",", actions);
+    return pathStr + ";" + result.pathCost + ";" + Node.expandedCount;
+}/* 
+public String path(Coord start, Coord destination, String strategy) {
+    // Save current state
+    Set<Coord> originalCustomers = new HashSet<>(customers);
+    List<Coord> originalStores = new ArrayList<>(stores);
+    
+    // Set up single-point path problem
+    customers.clear();
+    customers.add(destination);
+    stores.clear();
+    stores.add(start);
+    
+    System.out.println("DEBUG: Start=" + start.x + "," + start.y + 
+                       " Dest=" + destination.x + "," + destination.y);
+    System.out.println("DEBUG: Grid size=" + n + "x" + m);
+    System.out.println("DEBUG: Traffic entries=" + traffic.size());
+    
+    // Reset expanded nodes counter
+    Node.expandedCount = 0;
+    
+    // Create initial state with start position
+    String customInitialState = start.x + "," + start.y + ";;";
+    System.out.println("DEBUG: Initial state=" + customInitialState);
+    
+    // Manually run search with custom initial state
+    Queue<Node> frontier = makeQueue(makeNode(customInitialState));
+    Set<Object> explored = new HashSet<>();
+    Node result = null;
+    
+    int iterations = 0;
+    while (!frontier.isEmpty()) {
+        iterations++;
+        System.out.println("DEBUG: Iteration " + iterations + ", frontier size=" + frontier.size());
+        
+        Node node = removeFront(frontier);
+        System.out.println("DEBUG: Processing node state=" + node.state);
+        
+        if (isGoal(node.state)) {
+            System.out.println("DEBUG: GOAL FOUND!");
+            result = node;
+            break;
+        }
+        if (explored.contains(node.state)) {
+            System.out.println("DEBUG: Already explored, skipping");
+            continue;
+        }
+        explored.add(node.state);
+        Node.expandedCount++;
+        
+        List<Node> children = expand(node);
+        System.out.println("DEBUG: Expanded " + children.size() + " children");
+        
+        List<Node> filteredChildren = new ArrayList<>();
+        for (Node child : children) {
+            if (!explored.contains(child.state)) {
+                filteredChildren.add(child);
+            }
+        }
+        System.out.println("DEBUG: Filtered to " + filteredChildren.size() + " new children");
+        
+        frontier = qingFun(strategy, frontier, filteredChildren);
+        System.out.println("DEBUG: After qingFun, frontier size=" + frontier.size());
+        
+    }
+    
+    // Restore original state
+    customers = originalCustomers;
+    stores = originalStores;
+    
+    // Handle failure case
+    if (result == null) {
+        System.out.println("DEBUG: No solution found!");
+        return "NONE;0;0";
+    }
+    
+    // Build the action path
+    List<String> actions = new ArrayList<>();
+    Node current = result;
+    while (current.parent != null) {
+        actions.add(0, current.action);
+        current = current.parent;
+    }
+    
+    String pathStr = actions.isEmpty() ? "NONE" : String.join(",", actions);
+    return pathStr + ";" + result.pathCost + ";" + Node.expandedCount;
+}
+*/
+public String plan(String initialState, String trafficStr, String strategy, boolean visualize) {
+    // Parse initial state
+    parseInitialState(initialState);
+    
+    // Parse traffic
+    parseTraffic(trafficStr);
+    
+    StringBuilder result = new StringBuilder();
+    Set<Coord> remainingCustomers = new HashSet<>(customers);
+    int totalNodes = 0;
+    
+    // For each customer, find the best truck to deliver
+    while (!remainingCustomers.isEmpty()) {
+        Coord product = remainingCustomers.iterator().next();
+        
+        double bestCost = Double.MAX_VALUE;
+        String bestPlan = "NONE";
+        Coord bestTruck = null;
+        int bestNodes = 0;
+        
+        // Try each truck/store
+        for (Coord truck : stores) {
+            String pathResult = path(truck, product, strategy);
+            String[] pathParts = pathResult.split(";");
+            
+            if (pathParts[0].equals("NONE")) continue;
+            
+            double cost = Double.parseDouble(pathParts[1]);
+            int nodesExpanded = Integer.parseInt(pathParts[2]);
+            
+            if (cost < bestCost) {
+                bestCost = cost;
+                bestPlan = pathParts[0];
+                bestTruck = truck;
+                bestNodes = nodesExpanded;
+            }
+        }
+        
+        if (bestTruck == null) {
+            return "No solution exists";
+        }
+        
+        // Add to result
+        if (result.length() > 0) result.append(";");
+        result.append(bestTruck.x).append(",").append(bestTruck.y)
+              .append(",").append(product.x).append(",").append(product.y)
+              .append(",").append(bestPlan)
+              .append(",").append((int)bestCost)
+              .append(",").append(bestNodes);
+        
+        totalNodes += bestNodes;
+        
+        // Visualize if requested
+        if (visualize) {
+            visualizePath(bestTruck, product, bestPlan);
+        }
+        
+        // Remove delivered customer and update truck position
+        remainingCustomers.remove(product);
+        // Update store location to where truck ended up
+        stores.remove(bestTruck);
+        stores.add(product);
+    }
+    
+    return result.toString();
+}
 
-    public String plan(String initialState, String trafficStr, String strategy, boolean visualize){
-        // TODO
-        return "";
+public void parseInitialState(String initialState) {
+    String[] parts = initialState.split(";");
+    
+    this.m = Integer.parseInt(parts[0]);
+    this.n = Integer.parseInt(parts[1]);
+    this.p = Integer.parseInt(parts[2]);
+    this.s = Integer.parseInt(parts[3]);
+    
+    // Parse customers
+    customers.clear();
+    if (!parts[4].isEmpty()) {
+        String[] customerCoords = parts[4].split(",");
+        for (int i = 0; i < customerCoords.length; i += 2) {
+            customers.add(new Coord(
+                Integer.parseInt(customerCoords[i]),
+                Integer.parseInt(customerCoords[i + 1])
+            ));
+        }
     }
-    public String solve(String initialState, String trafficStr, String strategy, boolean visualize){
-        return plan(initialState, trafficStr, strategy, visualize);
+    
+    // Parse tunnels
+    tunnels.clear();
+    if (parts.length > 5 && !parts[5].isEmpty()) {
+        String[] tunnelCoords = parts[5].split(",");
+        for (int i = 0; i < tunnelCoords.length; i += 4) {
+            Coord a = new Coord(
+                Integer.parseInt(tunnelCoords[i]),
+                Integer.parseInt(tunnelCoords[i + 1])
+            );
+            Coord b = new Coord(
+                Integer.parseInt(tunnelCoords[i + 2]),
+                Integer.parseInt(tunnelCoords[i + 3])
+            );
+            tunnels.add(new Tunnel(a, b));
+        }
     }
+    
+    // Parse stores (if provided, otherwise generate them)
+    stores.clear();
+    if (parts.length > 6 && !parts[6].isEmpty()) {
+        String[] storeCoords = parts[6].split(",");
+        for (int i = 0; i < storeCoords.length; i += 2) {
+            stores.add(new Coord(
+                Integer.parseInt(storeCoords[i]),
+                Integer.parseInt(storeCoords[i + 1])
+            ));
+        }
+    } else {
+        // Generate random store locations
+        Random rand = new Random();
+        while (stores.size() < s) {
+            Coord store = new Coord(rand.nextInt(n), rand.nextInt(m));
+            if (!customers.contains(store) && !stores.contains(store)) {
+                stores.add(store);
+            }
+        }
+    }
+}
+
+private void parseTraffic(String trafficStr) {
+    traffic.clear();
+    if (trafficStr == null || trafficStr.isEmpty()) return;
+    
+    String[] segments = trafficStr.split(";");
+    for (String segment : segments) {
+        if (segment.isEmpty()) continue;
+        
+        String[] parts = segment.split(",");
+        Coord src = new Coord(
+            Integer.parseInt(parts[0]),
+            Integer.parseInt(parts[1])
+        );
+        Coord dst = new Coord(
+            Integer.parseInt(parts[2]),
+            Integer.parseInt(parts[3])
+        );
+        int trafficLevel = Integer.parseInt(parts[4]);
+        
+        if (trafficLevel == 0) {
+            traffic.put(new Edge(src, dst), Integer.MAX_VALUE); // Blocked
+        } else {
+            traffic.put(new Edge(src, dst), trafficLevel);
+        }
+    }
+}
+
+public void visualizePath(Coord start, Coord end, String pathStr) {
+    System.out.println("\n=== Delivery from (" + start.x + "," + start.y + 
+                       ") to (" + end.x + "," + end.y + ") ===");
+    
+    String[] actions = pathStr.split(",");
+    Coord current = new Coord(start.x, start.y);
+    
+    printGrid(current);
+    
+    for (String action : actions) {
+        switch (action) {
+            case "up": current = new Coord(current.x, current.y - 1); break;
+            case "down": current = new Coord(current.x, current.y + 1); break;
+            case "left": current = new Coord(current.x - 1, current.y); break;
+            case "right": current = new Coord(current.x + 1, current.y); break;
+            case "tunnel":
+                // Find tunnel exit
+                for (Tunnel t : tunnels) {
+                    if (t.a.equals(current)) {
+                        current = new Coord(t.b.x, t.b.y);
+                        break;
+                    } else if (t.b.equals(current)) {
+                        current = new Coord(t.a.x, t.a.y);
+                        break;
+                    }
+                }
+                break;
+        }
+        System.out.println("Action: " + action);
+        printGrid(current);
+    }
+}
+
+private void printGrid(Coord truckPos) {
+    for (int y = 0; y < m; y++) {
+        for (int x = 0; x < n; x++) {
+            Coord c = new Coord(x, y);
+            if (c.equals(truckPos)) {
+                System.out.print("T ");
+            } else if (customers.contains(c)) {
+                System.out.print("C ");
+            } else if (stores.contains(c)) {
+                System.out.print("S ");
+            } else {
+                boolean isTunnel = false;
+                for (Tunnel t : tunnels) {
+                    if (t.a.equals(c) || t.b.equals(c)) {
+                        System.out.print("# ");
+                        isTunnel = true;
+                        break;
+                    }
+                }
+                if (!isTunnel) System.out.print(". ");
+            }
+        }
+        System.out.println();
+    }
+    System.out.println();
+}
+
+public String solve(String initialState, String trafficStr, String strategy, boolean visualize) {
+    return plan(initialState, trafficStr, strategy, visualize);
+}
 }

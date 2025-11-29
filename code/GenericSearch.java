@@ -17,6 +17,7 @@ public abstract class GenericSearch {
                 System.out.println("Goal found! Expanded nodes: " + Node.expandedCount);
                 return node;
             }
+            if (explored.contains(node.state)) continue; // ADD THIS
             explored.add(node.state);
             Node.expandedCount++;
             List<Node> children = expand(node);
@@ -38,11 +39,20 @@ public abstract class GenericSearch {
     protected Node removeFront(Queue<Node> frontier) {
         return frontier.poll();
     }
-
+/*
     protected Queue<Node> qingFun(String strategy, Queue<Node> frontier, List<Node> newNodes) {
         switch (strategy) {
             //todo: implement the queuing function depending on the strategy
         }
         return frontier;
+    }*/
+protected Queue<Node> qingFun(String strategy, Queue<Node> frontier, List<Node> newNodes) {
+    // Simple BF implementation for testing
+    if (strategy.equals("BF")) {
+        for (Node node : newNodes) {
+            frontier.add(node);
+        }
     }
+    return frontier;
+}
 }
