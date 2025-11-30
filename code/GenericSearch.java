@@ -8,6 +8,8 @@ public abstract class GenericSearch {
     public abstract boolean isGoal(Object state);
     public abstract List<Node> expand(Node node);
     public abstract double getStepCost(Object state, String action, Object nextState);
+    private int depthLimit = 10;
+    public void setDepthLimit(int d) { this.depthLimit = d; }
     public Node solve(String strategy) {
         Queue<Node> frontier = makeQueue(makeNode(getInitialState()));
         Set<Object> explored = new HashSet<>();
@@ -65,6 +67,32 @@ protected Queue<Node> qingFun(String strategy, Queue<Node> frontier, List<Node> 
                 newFrontier.add(node);
             }
             return newFrontier;
+        case "ID": // Iterative Deepening Search (Depth-Limited DFS)
+            Queue<Node> idFrontier = new LinkedList<>();
+
+            for (Node node : newNodes) {
+                if (node.getDepth() <= depthLimit) {
+                    // LIFO behavior (like DF)
+                    idFrontier.add(node);
+                }
+            }
+
+            for (Node node : frontier) {
+                idFrontier.add(node);
+            }
+
+            return idFrontier;
+
+        case "UC": // Uniform-Cost Search
+            for (Node node : newNodes) {
+                frontier.add(node);
+            }
+
+            // Sort by path cost g(n)
+            List<Node> sorted = new ArrayList<>(frontier);
+            sorted.sort(Comparator.comparingDouble(n -> n.pathCost));
+
+            return new LinkedList<>(sorted);
             
         default:
             throw new IllegalArgumentException("Unknown strategy: " + strategy);

@@ -13,4 +13,13 @@ public class Node {
         this.action = action;
         this.pathCost = pathCost;
     }
+      public int getDepth() {
+        int d = 0;
+        Node current = this.parent;
+        while (current != null) {
+            d++;
+            current = current.parent;
+        }
+        return d;
+    }
 }

@@ -255,13 +255,12 @@ public double getStepCost(Object stateObj, String action, Object nextStateObj) {
 public String path(Coord start, Coord destination, String strategy) {
     // Save current state
     Set<Coord> originalCustomers = new HashSet<>(customers);
-    List<Coord> originalStores = new ArrayList<>(stores);
-    
+    //List<Coord> originalStores = new ArrayList<>(stores);
     // Set up single-point path problem
     customers.clear();
     customers.add(destination);
-    stores.clear();
-    stores.add(start);
+    //stores.clear();
+    //stores.add(start);
     
     // Reset expanded nodes counter
     Node.expandedCount = 0;
@@ -292,16 +291,14 @@ public String path(Coord start, Coord destination, String strategy) {
         }
         frontier = qingFun(strategy, frontier, filteredChildren);
     }
-    
+
     // Restore original state
     customers = originalCustomers;
-    stores = originalStores;
-    
+    //stores = originalStores;
     // Handle failure case
     if (result == null) {
         return "NONE;0;0";
     }
-    
     // Build the action path
     List<String> actions = new ArrayList<>();
     Node current = result;
@@ -309,7 +306,7 @@ public String path(Coord start, Coord destination, String strategy) {
         actions.add(0, current.action);
         current = current.parent;
     }
-    
+
     String pathStr = actions.isEmpty() ? "NONE" : String.join(",", actions);
     return pathStr + ";" + result.pathCost + ";" + Node.expandedCount;
 }/* 

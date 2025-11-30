@@ -2,6 +2,9 @@ package code;
 
 import java.util.*;
 
+import code.DeliverySearch.Coord;
+import code.DeliverySearch.Tunnel;
+
 public class DeliveryPlanner {
 
     private DeliverySearch search;
@@ -39,13 +42,6 @@ public class DeliveryPlanner {
                 search.tunnels.add(new DeliverySearch.Tunnel(a,b));
             }
         }
-/* 
-        search.stores.clear();
-        for(int i=0; i<S; i++){
-            search.stores.add(new DeliverySearch.Coord(0,i)); // example: trucks at top row
-        }
-*/
-//i commented the above because i already generate stores in the gengrid
         search.customers.clear();
         search.customers.addAll(products);
 
@@ -69,37 +65,49 @@ public class DeliveryPlanner {
         result.append("\n\n");
 
         result.append("=== DELIVERY PLAN ===\n");
-        for(DeliverySearch.Coord product : products){
-    double bestCost = Double.MAX_VALUE;
-    String bestPlan = "";
-    DeliverySearch.Coord bestTruck = null;
-    int bestTruckIndex = -1;  // ADD THIS
-    int bestNodes = 0;
+        if(strategy.equals("ID")) {
+        search.setDepthLimit(search.m * search.n); }
 
-    int truckIndex = 0;  // ADD THIS
-    for(DeliverySearch.Coord truck : search.stores){
-        String pathResult = search.path(truck, product, strategy);
-        String[] pathParts = pathResult.split(";");
-        double cost = Double.parseDouble(pathParts[1]);
-        int nodesExpanded = Integer.parseInt(pathParts[2]);
+       for(DeliverySearch.Coord product : products){
+        double bestCost = Double.MAX_VALUE;
+        String bestPlan = "";
+        int bestTruckIndex = -1;
+        int bestNodes = 0;
 
-        if(cost < bestCost){
-            bestCost = cost;
-            bestPlan = pathParts[0];
-            bestTruck = truck;
-            bestTruckIndex = truckIndex;  // ADD THIS
-            bestNodes = nodesExpanded;
-        }
-        truckIndex++;  // ADD THIS
-    }
+        for (int i = 0; i < search.stores.size(); i++) {
+            DeliverySearch.Coord truck = search.stores.get(i);
+            String pathResult = search.path(truck, product, strategy);
+            String[] pathParts = pathResult.split(";");
+            double cost = Double.parseDouble(pathParts[1]);
+            int nodesExpanded = Integer.parseInt(pathParts[2]);
 
-    result.append("Truck ").append(bestTruckIndex)  // CHANGE THIS LINE
-          .append(" -> Customer ").append(products.indexOf(product)).append("\n");
-            result.append("  Plan : ").append(bestPlan).append("\n");
-            result.append("  Total Cost : ").append(bestCost).append("\n");
-            result.append("  Nodes Expanded : ").append(bestNodes).append("\n\n");
+            if (cost < bestCost) {
+                bestCost = cost;
+                bestPlan = pathParts[0];
+                bestTruckIndex = i;
+                bestNodes = nodesExpanded;
+            }
         }
 
-        return result.toString();
+        // **Avant de mettre à jour la position du camion**
+        DeliverySearch.Coord oldTruck = search.stores.get(bestTruckIndex); // <-- à ajouter
+
+        // Affichage du plan
+        result.append("Truck ").append(bestTruckIndex)
+            .append(" -> Customer ").append(products.indexOf(product)).append("\n");
+        result.append("  Plan : ").append(bestPlan).append("\n");
+        result.append("  Total Cost : ").append(bestCost).append("\n");
+        result.append("  Nodes Expanded : ").append(bestNodes).append("\n\n");
+
+        // Mettre à jour la position du camion choisi
+        search.stores.set(bestTruckIndex, product);
+
+        // Appel de la visualisation
+        System.err.println("Visualizing path for Truck " + bestTruckIndex + " to Customer " + products.indexOf(product));
+        search.visualizePath(oldTruck, product, bestPlan);
     }
+
+            return result.toString();
+    }
+
 }
