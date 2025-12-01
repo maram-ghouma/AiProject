@@ -12,28 +12,6 @@ public class DeliverySearch extends GenericSearch {
     public Map<Edge, Integer> traffic = new HashMap<>();
     public List<Coord> stores = new ArrayList<>();
 
-/*    public static class State {
-        public Coord pos;
-        public Set<Coord> delivered; //les clients deja servis
-
-        public State(Coord pos, Set<Coord> delivered) {
-            this.pos = pos;
-            this.delivered = new HashSet<>(delivered);
-        }
-
-        @Override
-        public boolean equals(Object o){
-            if (!(o instanceof State)) return false;
-            State other = (State)o;
-            return pos.equals(other.pos) && delivered.equals(other.delivered);
-        }
-
-        @Override
-        public int hashCode(){
-            return Objects.hash(pos, delivered);
-        }
-    }*/
-
     public static class Coord {
         public int x, y;
         public Coord(int x, int y){ this.x = x; this.y = y; }
@@ -251,6 +229,66 @@ public double getStepCost(Object stateObj, String action, Object nextStateObj) {
         }
         return this.getInitialState();
 }
+
+    @Override
+    /*
+        h1: Simple Manhattan distance to the goal customer
+    */
+    public double heuristic1(Object stateObj, Object destinationObj) {
+        String state = (String) stateObj;
+        Coord destination = (Coord) destinationObj;
+        String[] parts = state.split(";");
+        String[] posParts = parts[0].split(",");
+        int x = Integer.parseInt(posParts[0]);
+        int y = Integer.parseInt(posParts[1]);
+        Coord currentPos = new Coord(x, y);
+
+        // Manhattan distance
+        return Math.abs(currentPos.x - destination.x) + 
+               Math.abs(currentPos.y - destination.y);
+    }   
+
+    @Override
+    /*
+        h2: Manhattan distance accounting for tunnel shortcuts
+    */
+    public double heuristic2(Object stateObj, Object destionationObj) {
+        String state = (String) stateObj;
+        Coord destination = (Coord) destionationObj;
+        String[] parts = state.split(";");
+        String[] posParts = parts[0].split(",");
+        int x = Integer.parseInt(posParts[0]);
+        int y = Integer.parseInt(posParts[1]);
+        Coord currentPos = new Coord(x, y);
+
+        // Direct Manhattan distance
+        double directDist = Math.abs(currentPos.x - destination.x) + 
+                           Math.abs(currentPos.y - destination.y);
+
+        // Check if any tunnel could provide a better lower bound
+        double minCost = directDist;
+
+        for (Tunnel tunnel : tunnels) {
+            // Cost via tunnel: distance to entrance + tunnel cost + distance from exit to goal
+            double viaTunnelA = Math.abs(currentPos.x - tunnel.a.x) + 
+                               Math.abs(currentPos.y - tunnel.a.y) +
+                               Math.abs(tunnel.a.x - tunnel.b.x) + 
+                               Math.abs(tunnel.a.y - tunnel.b.y) +
+                               Math.abs(tunnel.b.x - destination.x) + 
+                               Math.abs(tunnel.b.y - destination.y);
+
+            double viaTunnelB = Math.abs(currentPos.x - tunnel.b.x) + 
+                               Math.abs(currentPos.y - tunnel.b.y) +
+                               Math.abs(tunnel.b.x - tunnel.a.x) + 
+                               Math.abs(tunnel.b.y - tunnel.a.y) +
+                               Math.abs(tunnel.a.x - destination.x) + 
+                               Math.abs(tunnel.a.y - destination.y);
+
+            minCost = Math.min(minCost, Math.min(viaTunnelA, viaTunnelB));
+        }
+
+        return minCost;
+}
  
 public String path(Coord start, Coord destination, String strategy) {
     // Save current state
@@ -309,93 +347,8 @@ public String path(Coord start, Coord destination, String strategy) {
 
     String pathStr = actions.isEmpty() ? "NONE" : String.join(",", actions);
     return pathStr + ";" + result.pathCost + ";" + Node.expandedCount;
-}/* 
-public String path(Coord start, Coord destination, String strategy) {
-    // Save current state
-    Set<Coord> originalCustomers = new HashSet<>(customers);
-    List<Coord> originalStores = new ArrayList<>(stores);
-    
-    // Set up single-point path problem
-    customers.clear();
-    customers.add(destination);
-    stores.clear();
-    stores.add(start);
-    
-    System.out.println("DEBUG: Start=" + start.x + "," + start.y + 
-                       " Dest=" + destination.x + "," + destination.y);
-    System.out.println("DEBUG: Grid size=" + n + "x" + m);
-    System.out.println("DEBUG: Traffic entries=" + traffic.size());
-    
-    // Reset expanded nodes counter
-    Node.expandedCount = 0;
-    
-    // Create initial state with start position
-    String customInitialState = start.x + "," + start.y + ";;";
-    System.out.println("DEBUG: Initial state=" + customInitialState);
-    
-    // Manually run search with custom initial state
-    Queue<Node> frontier = makeQueue(makeNode(customInitialState));
-    Set<Object> explored = new HashSet<>();
-    Node result = null;
-    
-    int iterations = 0;
-    while (!frontier.isEmpty()) {
-        iterations++;
-        System.out.println("DEBUG: Iteration " + iterations + ", frontier size=" + frontier.size());
-        
-        Node node = removeFront(frontier);
-        System.out.println("DEBUG: Processing node state=" + node.state);
-        
-        if (isGoal(node.state)) {
-            System.out.println("DEBUG: GOAL FOUND!");
-            result = node;
-            break;
-        }
-        if (explored.contains(node.state)) {
-            System.out.println("DEBUG: Already explored, skipping");
-            continue;
-        }
-        explored.add(node.state);
-        Node.expandedCount++;
-        
-        List<Node> children = expand(node);
-        System.out.println("DEBUG: Expanded " + children.size() + " children");
-        
-        List<Node> filteredChildren = new ArrayList<>();
-        for (Node child : children) {
-            if (!explored.contains(child.state)) {
-                filteredChildren.add(child);
-            }
-        }
-        System.out.println("DEBUG: Filtered to " + filteredChildren.size() + " new children");
-        
-        frontier = qingFun(strategy, frontier, filteredChildren);
-        System.out.println("DEBUG: After qingFun, frontier size=" + frontier.size());
-        
-    }
-    
-    // Restore original state
-    customers = originalCustomers;
-    stores = originalStores;
-    
-    // Handle failure case
-    if (result == null) {
-        System.out.println("DEBUG: No solution found!");
-        return "NONE;0;0";
-    }
-    
-    // Build the action path
-    List<String> actions = new ArrayList<>();
-    Node current = result;
-    while (current.parent != null) {
-        actions.add(0, current.action);
-        current = current.parent;
-    }
-    
-    String pathStr = actions.isEmpty() ? "NONE" : String.join(",", actions);
-    return pathStr + ";" + result.pathCost + ";" + Node.expandedCount;
 }
-*/
+
 public String plan(String initialState, String trafficStr, String strategy, boolean visualize) {
     // Parse initial state
     parseInitialState(initialState);
@@ -403,6 +356,7 @@ public String plan(String initialState, String trafficStr, String strategy, bool
     // Parse traffic
     parseTraffic(trafficStr);
     
+
     StringBuilder result = new StringBuilder();
     Set<Coord> remainingCustomers = new HashSet<>(customers);
     int totalNodes = 0;
@@ -410,7 +364,7 @@ public String plan(String initialState, String trafficStr, String strategy, bool
     // For each customer, find the best truck to deliver
     while (!remainingCustomers.isEmpty()) {
         Coord product = remainingCustomers.iterator().next();
-        
+        this.goal = product;        
         double bestCost = Double.MAX_VALUE;
         String bestPlan = "NONE";
         Coord bestTruck = null;

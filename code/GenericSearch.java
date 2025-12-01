@@ -9,6 +9,9 @@ public abstract class GenericSearch {
     public abstract List<Node> expand(Node node);
     public abstract double getStepCost(Object state, String action, Object nextState);
     private int depthLimit = 10;
+    public abstract double heuristic1(Object state, Object goal);
+    public abstract double heuristic2(Object state, Object goal);
+    protected Object goal = null;
     public void setDepthLimit(int d) { this.depthLimit = d; }
     public Node solve(String strategy) {
         Queue<Node> frontier = makeQueue(makeNode(getInitialState()));
@@ -93,7 +96,43 @@ protected Queue<Node> qingFun(String strategy, Queue<Node> frontier, List<Node> 
             sorted.sort(Comparator.comparingDouble(n -> n.pathCost));
 
             return new LinkedList<>(sorted);
-            
+
+        case "GR1": // Greedy Search with h1
+            for (Node node : newNodes) {
+                frontier.add(node);
+            }
+
+            List<Node> gr1Sorted = new ArrayList<>(frontier);
+            gr1Sorted.sort(Comparator.comparingDouble(n -> heuristic1(n.state, this.goal)));
+            return new LinkedList<>(gr1Sorted);
+
+        case "GR2": // Greedy Search with h2
+            for (Node node : newNodes) {
+                frontier.add(node);
+            }
+
+            List<Node> gr2Sorted = new ArrayList<>(frontier);
+            gr2Sorted.sort(Comparator.comparingDouble(n -> heuristic2(n.state, this.goal)));
+            return new LinkedList<>(gr2Sorted);
+
+        case "AS1": // A* Search with h1
+            for (Node node : newNodes) {
+                frontier.add(node);
+            }
+
+            List<Node> as1Sorted = new ArrayList<>(frontier);
+            as1Sorted.sort(Comparator.comparingDouble(n -> n.pathCost + heuristic1(n.state,this.goal)));
+            return new LinkedList<>(as1Sorted);
+
+        case "AS2": // A* Search with h2
+            for (Node node : newNodes) {
+                frontier.add(node);
+            }
+
+            List<Node> as2Sorted = new ArrayList<>(frontier);
+            as2Sorted.sort(Comparator.comparingDouble(n -> n.pathCost + heuristic2(n.state, this.goal)));
+            return new LinkedList<>(as2Sorted);
+
         default:
             throw new IllegalArgumentException("Unknown strategy: " + strategy);
     }
