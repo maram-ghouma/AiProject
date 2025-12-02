@@ -357,6 +357,8 @@ public String plan(String initialState, String trafficStr, String strategy, bool
     
     // Parse traffic
     parseTraffic(trafficStr);
+
+    List<Coord> originalStores = new ArrayList<>(stores);
     
 
     StringBuilder result = new StringBuilder();
@@ -408,11 +410,8 @@ public String plan(String initialState, String trafficStr, String strategy, bool
             visualizePath(bestTruck, product, bestPlan);
         }
         
-        // Remove delivered customer and update truck position
+        // Remove delivered customer
         remainingCustomers.remove(product);
-        // Update store location to where truck ended up
-        stores.remove(bestTruck);
-        stores.add(product);
     }
     
     return result.toString();
