@@ -187,7 +187,7 @@ public double getStepCost(Object stateObj, String action, Object nextStateObj) {
 
         customers.clear();
         tunnels.clear();
-        stores.clear(); // ADD THIS
+        stores.clear();
 
         while (customers.size() < p) {
             Coord c = new Coord(rand.nextInt(n), rand.nextInt(m));
@@ -291,6 +291,7 @@ public double getStepCost(Object stateObj, String action, Object nextStateObj) {
 }
  
 public String path(Coord start, Coord destination, String strategy) {
+    this.goal = destination;
     // Save current state
     Set<Coord> originalCustomers = new HashSet<>(customers);
     //List<Coord> originalStores = new ArrayList<>(stores);
@@ -364,7 +365,6 @@ public String plan(String initialState, String trafficStr, String strategy, bool
     // For each customer, find the best truck to deliver
     while (!remainingCustomers.isEmpty()) {
         Coord product = remainingCustomers.iterator().next();
-        this.goal = product;        
         double bestCost = Double.MAX_VALUE;
         String bestPlan = "NONE";
         Coord bestTruck = null;

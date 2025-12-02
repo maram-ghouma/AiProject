@@ -2,9 +2,6 @@ package code;
 
 import java.util.*;
 
-import code.DeliverySearch.Coord;
-import code.DeliverySearch.Tunnel;
-
 public class DeliveryPlanner {
 
     private DeliverySearch search;

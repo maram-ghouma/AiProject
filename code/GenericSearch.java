@@ -44,99 +44,93 @@ public abstract class GenericSearch {
     protected Node removeFront(Queue<Node> frontier) {
         return frontier.poll();
     }
-/*
+
     protected Queue<Node> qingFun(String strategy, Queue<Node> frontier, List<Node> newNodes) {
         switch (strategy) {
-            //todo: implement the queuing function depending on the strategy
-        }
-        return frontier;
-    }*/
-protected Queue<Node> qingFun(String strategy, Queue<Node> frontier, List<Node> newNodes) {
-    switch (strategy) {
-        case "BF": // Breadth-First Search
-            // Add to end of queue (FIFO)
-            for (Node node : newNodes) {
-                frontier.add(node);
-            }
-            break;
-            
-        case "DF": // Depth-First Search
-            // Add to front of queue (LIFO) - use stack behavior
-            Queue<Node> newFrontier = new LinkedList<>();
-            for (Node node : newNodes) {
-                newFrontier.add(node);
-            }
-            for (Node node : frontier) {
-                newFrontier.add(node);
-            }
-            return newFrontier;
-        case "ID": // Iterative Deepening Search (Depth-Limited DFS)
-            Queue<Node> idFrontier = new LinkedList<>();
-
-            for (Node node : newNodes) {
-                if (node.getDepth() <= depthLimit) {
-                    // LIFO behavior (like DF)
-                    idFrontier.add(node);
+            case "BF": // Breadth-First Search
+                // Add to end of queue (FIFO)
+                for (Node node : newNodes) {
+                    frontier.add(node);
                 }
-            }
+                break;
+                
+            case "DF": // Depth-First Search
+                // Add to front of queue (LIFO) - use stack behavior
+                Queue<Node> newFrontier = new LinkedList<>();
+                for (Node node : newNodes) {
+                    newFrontier.add(node);
+                }
+                for (Node node : frontier) {
+                    newFrontier.add(node);
+                }
+                return newFrontier;
+            case "ID": // Iterative Deepening Search (Depth-Limited DFS)
+                Queue<Node> idFrontier = new LinkedList<>();    
 
-            for (Node node : frontier) {
-                idFrontier.add(node);
-            }
+                for (Node node : newNodes) {
+                    if (node.getDepth() <= depthLimit) {
+                        // LIFO behavior (like DF)
+                        idFrontier.add(node);
+                    }
+                }   
 
-            return idFrontier;
+                for (Node node : frontier) {
+                    idFrontier.add(node);
+                }   
 
-        case "UC": // Uniform-Cost Search
-            for (Node node : newNodes) {
-                frontier.add(node);
-            }
+                return idFrontier;  
 
-            // Sort by path cost g(n)
-            List<Node> sorted = new ArrayList<>(frontier);
-            sorted.sort(Comparator.comparingDouble(n -> n.pathCost));
+            case "UC": // Uniform-Cost Search
+                for (Node node : newNodes) {
+                    frontier.add(node);
+                }   
 
-            return new LinkedList<>(sorted);
+                // Sort by path cost g(n)
+                List<Node> sorted = new ArrayList<>(frontier);
+                sorted.sort(Comparator.comparingDouble(n -> n.pathCost));   
 
-        case "GR1": // Greedy Search with h1
-            for (Node node : newNodes) {
-                frontier.add(node);
-            }
+                return new LinkedList<>(sorted);    
 
-            List<Node> gr1Sorted = new ArrayList<>(frontier);
-            gr1Sorted.sort(Comparator.comparingDouble(n -> heuristic1(n.state, this.goal)));
-            return new LinkedList<>(gr1Sorted);
+            case "GR1": // Greedy Search with h1
+                for (Node node : newNodes) {
+                    frontier.add(node);
+                }   
 
-        case "GR2": // Greedy Search with h2
-            for (Node node : newNodes) {
-                frontier.add(node);
-            }
+                List<Node> gr1Sorted = new ArrayList<>(frontier);
+                gr1Sorted.sort(Comparator.comparingDouble(n -> heuristic1(n.state, this.goal)));
+                return new LinkedList<>(gr1Sorted); 
 
-            List<Node> gr2Sorted = new ArrayList<>(frontier);
-            gr2Sorted.sort(Comparator.comparingDouble(n -> heuristic2(n.state, this.goal)));
-            return new LinkedList<>(gr2Sorted);
+            case "GR2": // Greedy Search with h2
+                for (Node node : newNodes) {
+                    frontier.add(node);
+                }   
 
-        case "AS1": // A* Search with h1
-            for (Node node : newNodes) {
-                frontier.add(node);
-            }
+                List<Node> gr2Sorted = new ArrayList<>(frontier);
+                gr2Sorted.sort(Comparator.comparingDouble(n -> heuristic2(n.state, this.goal)));
+                return new LinkedList<>(gr2Sorted); 
 
-            List<Node> as1Sorted = new ArrayList<>(frontier);
-            as1Sorted.sort(Comparator.comparingDouble(n -> n.pathCost + heuristic1(n.state,this.goal)));
-            return new LinkedList<>(as1Sorted);
+            case "AS1": // A* Search with h1
+                for (Node node : newNodes) {
+                    frontier.add(node);
+                }   
 
-        case "AS2": // A* Search with h2
-            for (Node node : newNodes) {
-                frontier.add(node);
-            }
+                List<Node> as1Sorted = new ArrayList<>(frontier);
+                as1Sorted.sort(Comparator.comparingDouble(n -> n.pathCost + heuristic1(n.state,this.goal)));
+                return new LinkedList<>(as1Sorted); 
 
-            List<Node> as2Sorted = new ArrayList<>(frontier);
-            as2Sorted.sort(Comparator.comparingDouble(n -> n.pathCost + heuristic2(n.state, this.goal)));
-            return new LinkedList<>(as2Sorted);
+            case "AS2": // A* Search with h2
+                for (Node node : newNodes) {
+                    frontier.add(node);
+                }   
 
-        default:
-            throw new IllegalArgumentException("Unknown strategy: " + strategy);
+                List<Node> as2Sorted = new ArrayList<>(frontier);
+                as2Sorted.sort(Comparator.comparingDouble(n -> n.pathCost + heuristic2(n.state, this.goal)));
+                return new LinkedList<>(as2Sorted); 
+
+            default:
+                throw new IllegalArgumentException("Unknown strategy: " + strategy);
+        }
+        
+        return frontier;
     }
-    
-    return frontier;
-}
 }

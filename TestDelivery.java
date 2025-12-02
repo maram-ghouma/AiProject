@@ -54,7 +54,7 @@ printVisualGrid(search);
         System.out.println("=".repeat(60));
         
         long startTimeBF = System.currentTimeMillis();
-        String resultBF = planner.plan(randomGrid, traffic, "BF", false);
+        String resultBF = planner.plan(randomGrid, traffic, "GR1", false);
         long endTimeBF = System.currentTimeMillis();
         
         System.out.println(resultBF);
@@ -64,15 +64,15 @@ printVisualGrid(search);
         BFDFComparison bfStats = parseResults(resultBF);
         
         System.out.println("\n" + "=".repeat(60));
-        System.out.println("          TESTING DF (DEPTH-FIRST) STRATEGY");
+        System.out.println("          TESTING UC (DEPTH-FIRST) STRATEGY");
         System.out.println("=".repeat(60));
         
         long startTimeDF = System.currentTimeMillis();
-        String resultDF = planner.plan(randomGrid, traffic, "DF", false);
+        String resultDF = planner.plan(randomGrid, traffic, "GR2", false);
         long endTimeDF = System.currentTimeMillis();
         
         System.out.println(resultDF);
-        System.out.println("DF Execution Time: " + (endTimeDF - startTimeDF) + " ms");
+        System.out.println("UC Execution Time: " + (endTimeDF - startTimeDF) + " ms");
         
         // Parse DF results
         BFDFComparison dfStats = parseResults(resultDF);
@@ -82,7 +82,7 @@ printVisualGrid(search);
         System.out.println("                    COMPARISON SUMMARY");
         System.out.println("=".repeat(60));
         System.out.println("\n┌─────────────────────────┬──────────────┬──────────────┐");
-        System.out.println("│ Metric                  │      BF      │      DF      │");
+        System.out.println("│ Metric                  │      BF      │      UC      │");
         System.out.println("├─────────────────────────┼──────────────┼──────────────┤");
         System.out.printf("│ Total Delivery Cost     │   %8.1f   │   %8.1f   │%n", 
                           bfStats.totalCost, dfStats.totalCost);
