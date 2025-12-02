@@ -1,7 +1,88 @@
 package test;
 import code.*;
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryMXBean;
+import java.lang.management.ThreadMXBean;
+
 public class TestDelivery {
+
+    private static final String[] VALID_STRATEGIES = {"BF", "DF", "ID", "UC", "GR1", "GR2", "AS1", "AS2"};
+
+    private static class ResourceSnapshot {
+        long cpuTime;
+        long memoryUsed;
+        
+        static ResourceSnapshot take() {
+            ResourceSnapshot snapshot = new ResourceSnapshot();
+            ThreadMXBean threadBean = ManagementFactory.getThreadMXBean();
+            MemoryMXBean memoryBean = ManagementFactory.getMemoryMXBean();
+
+            snapshot.cpuTime = threadBean.getCurrentThreadCpuTime();
+            snapshot.memoryUsed = memoryBean.getHeapMemoryUsage().getUsed();
+
+            return snapshot;
+        }
+
+        long getCpuDiff(ResourceSnapshot end) {
+            return end.cpuTime - this.cpuTime;
+        }
+
+        long getMemoryDiff(ResourceSnapshot end) {
+            return end.memoryUsed - this.memoryUsed;
+        }
+    }
+
+    static class StrategyStats {
+        String strategyName;
+        double totalCost = 0;
+        int totalNodes = 0;
+        long cpuTime = 0;
+        long memoryUsed = 0;
+        long executionTime = 0;
+        String result;
+    }
+
     public static void main(String[] args) {
+        // Parse command-line arguments
+        if (args.length != 2) {
+            printUsage();
+            return;
+        }
+
+        String strategy1 = args[0].toUpperCase();
+        String strategy2 = args[1].toUpperCase();
+
+        // Validate strategies
+        if (!isValidStrategy(strategy1) || !isValidStrategy(strategy2)) {
+            System.err.println("❌ Error: Invalid strategy specified.");
+            System.err.println("Valid strategies: " + String.join(", ", VALID_STRATEGIES));
+            return;
+        }
+
+        try {
+            runComparison(strategy1, strategy2);
+        } catch (InterruptedException e) {
+            System.err.println("Thread interrupted: " + e.getMessage());
+        }
+    }
+
+    private static void printUsage() {
+        System.out.println("Usage: java test.TestDelivery <strategy1> <strategy2>");
+        System.out.println("\nValid strategies: " + String.join(", ", VALID_STRATEGIES));
+        System.out.println("\nExample: java test.TestDelivery BF DF");
+        System.out.println("         java test.TestDelivery GR1 AS1");
+    }
+
+    private static boolean isValidStrategy(String strategy) {
+        for (String valid : VALID_STRATEGIES) {
+            if (valid.equals(strategy)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static void runComparison(String strategy1, String strategy2) throws InterruptedException {
         DeliverySearch search = new DeliverySearch();
         DeliveryPlanner planner = new DeliveryPlanner(search);
         
@@ -40,78 +121,108 @@ public class TestDelivery {
                              ") <-> (" + t.b.x + "," + t.b.y + ")");
             tunnelNum++;
         }
-        System.out.println("\nTunnels:");
 
-// ADD THIS SECTION:
-System.out.println("\n=== VISUAL GRID ===");
-printVisualGrid(search);
+        System.out.println("\n=== VISUAL GRID ===");
+        printVisualGrid(search);
 
         // Generate complete traffic data
         String traffic = generateCompleteTraffic(search);
         System.out.println("\nTraffic edges generated: " + search.traffic.size());
         
-        System.out.println("\n" + "=".repeat(60));
-        System.out.println("          TESTING BF (BREADTH-FIRST) STRATEGY");
-        System.out.println("=".repeat(60));
+        // Test Strategy 1
+        StrategyStats stats1 = testStrategy(planner, randomGrid, traffic, strategy1);
         
-        long startTimeBF = System.currentTimeMillis();
-        String resultBF = planner.plan(randomGrid, traffic, "GR1", false);
-        long endTimeBF = System.currentTimeMillis();
-        
-        System.out.println(resultBF);
-        System.out.println("BF Execution Time: " + (endTimeBF - startTimeBF) + " ms");
-        
-        // Parse BF results
-        BFDFComparison bfStats = parseResults(resultBF);
-        
-        System.out.println("\n" + "=".repeat(60));
-        System.out.println("          TESTING UC (DEPTH-FIRST) STRATEGY");
-        System.out.println("=".repeat(60));
-        
-        long startTimeDF = System.currentTimeMillis();
-        String resultDF = planner.plan(randomGrid, traffic, "GR2", false);
-        long endTimeDF = System.currentTimeMillis();
-        
-        System.out.println(resultDF);
-        System.out.println("UC Execution Time: " + (endTimeDF - startTimeDF) + " ms");
-        
-        // Parse DF results
-        BFDFComparison dfStats = parseResults(resultDF);
+        // Test Strategy 2
+        StrategyStats stats2 = testStrategy(planner, randomGrid, traffic, strategy2);
         
         // Print comparison
+        printComparison(stats1, stats2);
+    }
+
+    private static StrategyStats testStrategy(DeliveryPlanner planner, String grid, 
+                                              String traffic, String strategy) throws InterruptedException {
+        System.out.println("\n" + "=".repeat(60));
+        System.out.println("          TESTING " + strategy + " STRATEGY");
+        System.out.println("=".repeat(60));
+        
+        System.gc();
+        Thread.sleep(100);
+
+        StrategyStats stats = new StrategyStats();
+        stats.strategyName = strategy;
+
+        ResourceSnapshot start = ResourceSnapshot.take();
+        long startTime = System.currentTimeMillis();
+        
+        String result = planner.plan(grid, traffic, strategy, false);
+        
+        long endTime = System.currentTimeMillis();
+        ResourceSnapshot end = ResourceSnapshot.take();
+        
+        System.out.println(result);
+        System.out.println(strategy + " Execution Time: " + (endTime - startTime) + " ms");
+        
+        // Parse results
+        stats.result = result;
+        parseResults(result, stats);
+        stats.cpuTime = start.getCpuDiff(end);
+        stats.memoryUsed = start.getMemoryDiff(end);
+        stats.executionTime = endTime - startTime;
+
+        return stats;
+    }
+
+    private static void printComparison(StrategyStats stats1, StrategyStats stats2) {
         System.out.println("\n" + "=".repeat(60));
         System.out.println("                    COMPARISON SUMMARY");
         System.out.println("=".repeat(60));
         System.out.println("\n┌─────────────────────────┬──────────────┬──────────────┐");
-        System.out.println("│ Metric                  │      BF      │      UC      │");
+        System.out.printf("│ Metric                  │   %-8s   │   %-8s   │%n", 
+                          stats1.strategyName, stats2.strategyName);
         System.out.println("├─────────────────────────┼──────────────┼──────────────┤");
         System.out.printf("│ Total Delivery Cost     │   %8.1f   │   %8.1f   │%n", 
-                          bfStats.totalCost, dfStats.totalCost);
+                          stats1.totalCost, stats2.totalCost);
         System.out.printf("│ Total Nodes Expanded    │   %8d   │   %8d   │%n", 
-                          bfStats.totalNodes, dfStats.totalNodes);
+                          stats1.totalNodes, stats2.totalNodes);
         System.out.printf("│ Execution Time (ms)     │   %8d   │   %8d   │%n", 
-                          (endTimeBF - startTimeBF), (endTimeDF - startTimeDF));
+                          stats1.executionTime, stats2.executionTime);
+        System.out.printf("│ CPU Time (ms)           │   %8d   │   %8d   │%n", 
+                          stats1.cpuTime / 1_000_000, stats2.cpuTime / 1_000_000);
+        System.out.printf("│ Memory Used (MB)        │   %8.2f   │   %8.2f   │%n", 
+                          stats1.memoryUsed / (1024.0 * 1024.0), stats2.memoryUsed / (1024.0 * 1024.0));
         System.out.println("└─────────────────────────┴──────────────┴──────────────┘\n");
         
         // Determine winner
         System.out.println("🏆 WINNER: ");
-        if (bfStats.totalCost < dfStats.totalCost) {
-            double improvement = ((dfStats.totalCost - bfStats.totalCost) / dfStats.totalCost) * 100;
-            System.out.println("   BF (Breadth-First) Strategy!");
-            System.out.printf("   BF found %.1f%% better solution than DF%n", improvement);
-        } else if (dfStats.totalCost < bfStats.totalCost) {
-            double improvement = ((bfStats.totalCost - dfStats.totalCost) / bfStats.totalCost) * 100;
-            System.out.println("   DF (Depth-First) Strategy!");
-            System.out.printf("   DF found %.1f%% better solution than BF%n", improvement);
+        if (stats1.totalCost < stats2.totalCost) {
+            double improvement = ((stats2.totalCost - stats1.totalCost) / stats2.totalCost) * 100;
+            System.out.println("   " + stats1.strategyName + " Strategy!");
+            System.out.printf("   %s found %.1f%% better solution than %s%n", 
+                            stats1.strategyName, improvement, stats2.strategyName);
+        } else if (stats2.totalCost < stats1.totalCost) {
+            double improvement = ((stats1.totalCost - stats2.totalCost) / stats1.totalCost) * 100;
+            System.out.println("   " + stats2.strategyName + " Strategy!");
+            System.out.printf("   %s found %.1f%% better solution than %s%n", 
+                            stats2.strategyName, improvement, stats1.strategyName);
         } else {
             System.out.println("   TIE - Both strategies found same cost!");
         }
         
         System.out.println("\n📊 Analysis:");
-        if (bfStats.totalNodes < dfStats.totalNodes) {
-            System.out.println("   - BF explored fewer nodes (more efficient search)");
+        if (stats1.totalNodes < stats2.totalNodes) {
+            System.out.println("   - " + stats1.strategyName + " explored fewer nodes (more efficient search)");
+        } else if (stats2.totalNodes < stats1.totalNodes) {
+            System.out.println("   - " + stats2.strategyName + " explored fewer nodes (more efficient search)");
         } else {
-            System.out.println("   - DF explored fewer nodes (more efficient search)");
+            System.out.println("   - Both strategies explored the same number of nodes");
+        }
+        
+        if (stats1.executionTime < stats2.executionTime) {
+            double speedup = ((double)stats2.executionTime / stats1.executionTime);
+            System.out.printf("   - %s was %.2fx faster%n", stats1.strategyName, speedup);
+        } else if (stats2.executionTime < stats1.executionTime) {
+            double speedup = ((double)stats1.executionTime / stats2.executionTime);
+            System.out.printf("   - %s was %.2fx faster%n", stats2.strategyName, speedup);
         }
         
         System.out.println("\n✅ Test Complete!");
@@ -126,7 +237,6 @@ printVisualGrid(search);
                 DeliverySearch.Coord src = new DeliverySearch.Coord(x, y);
                 DeliverySearch.Coord dst = new DeliverySearch.Coord(x + 1, y);
                 
-                // Get cost from search.traffic (already generated by GenGrid)
                 int cost1 = search.traffic.getOrDefault(new DeliverySearch.Edge(src, dst), 1);
                 int cost2 = search.traffic.getOrDefault(new DeliverySearch.Edge(dst, src), 1);
                 
@@ -162,9 +272,7 @@ printVisualGrid(search);
         return traffic.toString();
     }
     
-    private static BFDFComparison parseResults(String result) {
-        BFDFComparison stats = new BFDFComparison();
-        
+    private static void parseResults(String result, StrategyStats stats) {
         String[] lines = result.split("\n");
         for (String line : lines) {
             if (line.contains("Total Cost")) {
@@ -175,60 +283,53 @@ printVisualGrid(search);
                 stats.totalNodes += Integer.parseInt(nodesStr);
             }
         }
-        
-        return stats;
-    }
-    
-    static class BFDFComparison {
-        double totalCost = 0;
-        int totalNodes = 0;
     }
 
     private static void printVisualGrid(DeliverySearch search) {
-    for (int y = 0; y < search.m; y++) {
-        for (int x = 0; x < search.n; x++) {
-            DeliverySearch.Coord pos = new DeliverySearch.Coord(x, y);
-            boolean found = false;
-            
-            // Check if it's a truck/store
-            for (int i = 0; i < search.stores.size(); i++) {
-                if (search.stores.get(i).equals(pos)) {
-                    System.out.print("T" + i + " ");
-                    found = true;
-                    break;
-                }
-            }
-            
-            if (!found) {
-                // Check if it's a customer
-                int custIndex = 0;
-                for (DeliverySearch.Coord c : search.customers) {
-                    if (c.equals(pos)) {
-                        System.out.print("C" + custIndex + " ");
-                        found = true;
-                        break;
-                    }
-                    custIndex++;
-                }
-            }
-            
-            if (!found) {
-                // Check if it's a tunnel
-                for (DeliverySearch.Tunnel t : search.tunnels) {
-                    if (t.a.equals(pos) || t.b.equals(pos)) {
-                        System.out.print("#  ");
+        for (int y = 0; y < search.m; y++) {
+            for (int x = 0; x < search.n; x++) {
+                DeliverySearch.Coord pos = new DeliverySearch.Coord(x, y);
+                boolean found = false;
+                
+                // Check if it's a truck/store
+                for (int i = 0; i < search.stores.size(); i++) {
+                    if (search.stores.get(i).equals(pos)) {
+                        System.out.print("T" + i + " ");
                         found = true;
                         break;
                     }
                 }
+                
+                if (!found) {
+                    // Check if it's a customer
+                    int custIndex = 0;
+                    for (DeliverySearch.Coord c : search.customers) {
+                        if (c.equals(pos)) {
+                            System.out.print("C" + custIndex + " ");
+                            found = true;
+                            break;
+                        }
+                        custIndex++;
+                    }
+                }
+                
+                if (!found) {
+                    // Check if it's a tunnel
+                    for (DeliverySearch.Tunnel t : search.tunnels) {
+                        if (t.a.equals(pos) || t.b.equals(pos)) {
+                            System.out.print("#  ");
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+                
+                if (!found) {
+                    System.out.print(".  ");
+                }
             }
-            
-            if (!found) {
-                System.out.print(".  ");
-            }
+            System.out.println();
         }
-        System.out.println();
+        System.out.println("\nLegend: T0,T1=Trucks, C0-C4=Customers, #=Tunnel, .=Empty");
     }
-    System.out.println("\nLegend: T0,T1=Trucks, C0-C4=Customers, #=Tunnel, .=Empty");
-}
 }
