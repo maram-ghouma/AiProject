@@ -209,13 +209,14 @@ public double getStepCost(Object stateObj, String action, Object nextStateObj) {
             tunnels.add(new Tunnel(a, b));
         }
         traffic.clear();
+        double blockedChance = 0.1;
         //horizontal
         for (int x = 0; x < n - 1; x++) {
             for (int y = 0; y < m; y++) {
                 Coord src = new Coord(x, y);
                 Coord dst = new Coord(x + 1, y);
-                traffic.put(new Edge(src, dst), rand.nextInt(4) + 1); 
-                traffic.put(new Edge(dst, src), rand.nextInt(4) + 1); 
+                traffic.put(new Edge(src, dst), (rand.nextDouble() < blockedChance) ? 0 : rand.nextInt(4) + 1); 
+                traffic.put(new Edge(dst, src), (rand.nextDouble() < blockedChance) ? 0 : rand.nextInt(4) + 1); 
             }
         }
         //vertical
@@ -223,8 +224,8 @@ public double getStepCost(Object stateObj, String action, Object nextStateObj) {
             for (int y = 0; y < m - 1; y++) {
                 Coord src = new Coord(x, y);
                 Coord dst = new Coord(x, y + 1);
-                traffic.put(new Edge(src, dst), rand.nextInt(4) + 1);
-                traffic.put(new Edge(dst, src), rand.nextInt(4) + 1);
+                traffic.put(new Edge(src, dst), (rand.nextDouble() < blockedChance) ? 0 : rand.nextInt(4) + 1);
+                traffic.put(new Edge(dst, src), (rand.nextDouble() < blockedChance) ? 0 : rand.nextInt(4) + 1);
             }
         }
         return this.getInitialState();
