@@ -220,7 +220,7 @@ public class TestDelivery {
         ResourceSnapshot start = ResourceSnapshot.take();
         long startTime = System.currentTimeMillis();
         
-        String result = planner.plan(grid, traffic, strategy, false);
+        String result = planner.plan(grid, traffic, strategy, true);
         
         long endTime = System.currentTimeMillis();
         ResourceSnapshot end = ResourceSnapshot.take();

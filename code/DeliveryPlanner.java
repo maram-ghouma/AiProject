@@ -86,8 +86,7 @@ public class DeliveryPlanner {
             }
         }
 
-        // **Avant de mettre à jour la position du camion**
-        DeliverySearch.Coord oldTruck = search.stores.get(bestTruckIndex); // <-- à ajouter
+        DeliverySearch.Coord truckStore = search.stores.get(bestTruckIndex);
 
         // Affichage du plan
         result.append("Truck ").append(bestTruckIndex)
@@ -96,12 +95,11 @@ public class DeliveryPlanner {
         result.append("  Total Cost : ").append(bestCost).append("\n");
         result.append("  Nodes Expanded : ").append(bestNodes).append("\n\n");
 
-        // Mettre à jour la position du camion choisi
-        search.stores.set(bestTruckIndex, product);
-
         // Appel de la visualisation
-        System.err.println("Visualizing path for Truck " + bestTruckIndex + " to Customer " + products.indexOf(product));
-        search.visualizePath(oldTruck, product, bestPlan);
+        if (visualize) {
+            System.err.println("Visualizing path for Truck " + bestTruckIndex + " to Customer " + products.indexOf(product));
+            search.visualizePath(truckStore, product, bestPlan);
+        }
     }
 
             return result.toString();

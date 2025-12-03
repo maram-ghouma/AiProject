@@ -112,6 +112,14 @@ public boolean isGoal(Object stateObj) {
                 Set<Coord> newDelivered = new HashSet<>(delivered);
                 if (customers.contains(nextCoord)) newDelivered.add(nextCoord);
 
+                
+                Coord currentCoord = new Coord(x,y);
+                Edge e = new Edge(currentCoord, nextCoord);
+                Integer trafficLevel = traffic.get(e);
+                if (trafficLevel != null && trafficLevel == 0) {
+                    continue;
+                }
+
                 // Build new state string
                 StringBuilder sb = new StringBuilder();
                 sb.append(nx).append(",").append(ny).append(";");
@@ -173,7 +181,11 @@ public double getStepCost(Object stateObj, String action, Object nextStateObj) {
     } else {
         // Normal move: look up traffic
         Edge e = new Edge(src, dst);
-        return (double) traffic.getOrDefault(e, Integer.MAX_VALUE); // blocked road = inf
+        Integer trafficLevel = traffic.get(e);
+        if (trafficLevel == null) {
+            return 0;
+        }
+        return trafficLevel;
     }
 }
 
@@ -496,7 +508,7 @@ public void parseTraffic(String trafficStr) {
         int trafficLevel = Integer.parseInt(parts[4]);
         
         if (trafficLevel == 0) {
-            traffic.put(new Edge(src, dst), Integer.MAX_VALUE); // Blocked
+            traffic.put(new Edge(src, dst), 0); // Blocked
         } else {
             traffic.put(new Edge(src, dst), trafficLevel);
         }
