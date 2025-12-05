@@ -1,1 +1,58 @@
-*.class
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+delivery-visualizer/node_modules
+delivery-visualizer/.pnp
+delivery-visualizer/.pnp.js
+
+# testing
+delivery-visualizer/coverage
+delivery-visualizer/jest-test-results.json
+delivery-visualizer/.nyc_output
+delivery-visualizer/cypress/videos
+delivery-visualizer/cypress/screenshots
+
+# production
+delivery-visualizer/build
+delivery-visualizer/.dist
+delivery-visualizer/.cache
+delivery-visualizer/.temp
+delivery-visualizer/tmp
+
+# misc
+delivery-visualizer/.DS_Store
+delivery-visualizer/Thumbs.db
+delivery-visualizer/ehthumbs.db
+delivery-visualizer/Icon?
+delivery-visualizer/.env
+delivery-visualizer/.env.local
+delivery-visualizer/.env.production
+delivery-visualizer/.env.production.local
+delivery-visualizer/.env.development
+delivery-visualizer/.env.development.local
+delivery-visualizer/.env.test
+delivery-visualizer/.env.test.local
+
+# logs
+delivery-visualizer/npm-debug.log*
+delivery-visualizer/yarn-debug.log*
+delivery-visualizer/yarn-error.log*
+delivery-visualizer/*.log
+delivery-visualizer/debug.log
+
+# IDE / Editor
+delivery-visualizer/.vscode
+delivery-visualizer/.idea
+delivery-visualizer/*.suo
+delivery-visualizer/*.ntvs*
+delivery-visualizer/*.njsproj
+delivery-visualizer/*.sln
+delivery-visualizer/*.sw?
+
+# SSL certificates
+delivery-visualizer/*.pem
+delivery-visualizer/*.crt
+delivery-visualizer/*.key
+
+# Storybook
+delivery-visualizer/storybook-static
