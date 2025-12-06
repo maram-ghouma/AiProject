@@ -38,6 +38,13 @@ const App = () => {
 
   const loadGrid = async () => {
     setLoading(true);
+      setSelectedStrategy(null);
+  setResults({});
+  setCurrentDelivery(0);
+  setCurrentStep(0);
+  setIsPlaying(false);
+  setShowComparison(false);
+  setstartDelivery(false);
     try {
       const response = await fetch('http://localhost:8080/api/grid/generate');
       const data = await response.json();

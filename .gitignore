@@ -48,6 +48,7 @@ delivery-visualizer/*.ntvs*
 delivery-visualizer/*.njsproj
 delivery-visualizer/*.sln
 delivery-visualizer/*.sw?
+*.class
 
 # SSL certificates
 delivery-visualizer/*.pem
