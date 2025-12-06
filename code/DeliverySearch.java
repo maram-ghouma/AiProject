@@ -206,7 +206,7 @@ public double getStepCost(Object stateObj, String action, Object nextStateObj) {
             customers.add(c);
         }
 
-        // ADD THIS - Generate stores
+        // Generate stores
         while (stores.size() < s) {
             Coord store = new Coord(rand.nextInt(n), rand.nextInt(m));
             if (!customers.contains(store) && !stores.contains(store)) {
@@ -317,7 +317,7 @@ public String path(Coord start, Coord destination, String strategy) {
     // Reset expanded nodes counter
     Node.expandedCount = 0;
     
-    // Create initial state with start position (NOT using getInitialState())
+    // Create initial state with start position 
     String customInitialState = start.x + "," + start.y + ";;";
     
     // Manually run search with custom initial state

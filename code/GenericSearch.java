@@ -22,7 +22,7 @@ public abstract class GenericSearch {
                 System.out.println("Goal found! Expanded nodes: " + Node.expandedCount);
                 return node;
             }
-            if (explored.contains(node.state)) continue; // ADD THIS
+            if (explored.contains(node.state)) continue;
             explored.add(node.state);
             Node.expandedCount++;
             List<Node> children = expand(node);
@@ -55,7 +55,7 @@ public abstract class GenericSearch {
                 break;
                 
             case "DF": // Depth-First Search
-                // Add to front of queue (LIFO) - use stack behavior
+                // Add to front of queue (LIFO) 
                 Queue<Node> newFrontier = new LinkedList<>();
                 for (Node node : newNodes) {
                     newFrontier.add(node);
